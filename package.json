@@ -1,0 +1,12 @@
+{
+  "name": "weather_station",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "repository": "git@github.com:jibin2706/weather-station.git",
+  "license": "MIT",
+  "scripts": {},
+  "dependencies": {
+    "mqtt": "^4.2.6"
+  }
+}
