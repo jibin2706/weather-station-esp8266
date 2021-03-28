@@ -1,6 +1,9 @@
 import mqtt from 'mqtt'
+import sqlite3pkg from 'sqlite3'
 
-const client  = mqtt.connect('mqtt://broker.emqx.io')
+const client = mqtt.connect('mqtt://broker.emqx.io')
+const sqlite3 = sqlite3pkg.verbose()
+const database = new sqlite3.Database('./data.db')
 
 client.on('connect', function () {
   client.subscribe('presence', function (err) {
@@ -16,5 +19,19 @@ client.on('connect', function () {
 client.subscribe('weather')
 
 client.on('message', (topic, message) => {
-  console.log(topic, message.toString())
+  if (topic === 'weather') {
+    handleWeatherEvent(message)
+  }
 })
+
+const handleWeatherEvent = message => {
+  try {
+    const weatherObj = JSON.parse(message.toString())
+    database.run(
+      `INSERT INTO weather (temperature, humidity) values (${weatherObj.temperature}, ${weatherObj.humidity});`,
+    )
+    console.log(weatherObj)
+  } catch (err) {
+    console.log(err)
+  }
+}
