@@ -1,13 +1,14 @@
 import mqtt from 'mqtt'
 
-const client  = mqtt.connect('mqtt://localhost')
+const client  = mqtt.connect('mqtt://broker.emqx.io')
 
 client.on('connect', function () {
   client.subscribe('presence', function (err) {
     if (!err) {
+      console.log('connection established')
       client.publish('presence', 'connection established')
     } else {
-      console.log(err)
+      console.log('err', err)
     }
   })
 })

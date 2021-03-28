@@ -1,6 +1,9 @@
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
+#include <PubSubClient.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <WiFiClient.h>
 #include <NTPClient.h>
 #include <DHT.h>
 #include "config.h"
@@ -8,7 +11,7 @@
 
 // Pins
 #define SCREEN_WIDTH    128
-#define SCREEN_HEIGHT   64 
+#define SCREEN_HEIGHT   64
 #define OLED_MOSI       D7
 #define OLED_CLK        D5
 #define OLED_DC         D2
@@ -20,9 +23,11 @@
 
 // initialization
 WiFiUDP ntpUDP;
+WiFiClient wifiClient;
+PubSubClient client(wifiClient);
 NTPClient timeClient(ntpUDP);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
-  OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
+                         OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 DHT dht(DHTPIN, DHTTYPE);
 
 
@@ -32,17 +37,18 @@ void setup() {
   dht.begin();
   timeClient.begin();
 
-  if(!display.begin(SSD1306_SWITCHCAPVCC)){
-       Serial.println(F("SSD1306 allocation failed"));
-       for(;;); // Don't proceed, loop forever
-    }
+  if (!display.begin(SSD1306_SWITCHCAPVCC)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;); // Don't proceed, loop forever
+  }
 }
 
 void loop() {
-    printWeatherToDisplay(dht.readTemperature(), dht.readHumidity());
-    Serial.println(dht.readTemperature());
-    Serial.println(dht.readHumidity());
-    delay(2000);
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  printWeatherToDisplay(temperature, humidity);
+  publishWeatherToMqtt(temperature, humidity);
+  delay(5000);
 }
 
 
@@ -55,6 +61,34 @@ void connectWiFi() {
     delay(3000);
   }
   Serial.println(WiFi.localIP());
+  connectToMQTTServer();
+}
+
+void connectToMQTTServer() {
+  client.setServer(MQTT_BROKER, MQTT_PORT);
+  int maxRetries = 3;
+  int count = 0;
+  while (!client.connected()) {
+    Serial.println("connecting to mqtt server");
+    if (client.connect("nodemcu-jibin")) {
+      Serial.println("connection to mqtt server is successful");
+    } else {
+      Serial.print("connection failed due to");
+      Serial.println(client.state());
+      delay(2000);
+    }
+    count++;
+    if (count >= maxRetries) break;
+  }
+}
+
+void publishWeatherToMqtt(float temperature, float humidity) {
+  StaticJsonDocument<200> doc;
+  char json_string[256];
+  doc["temperature"] = temperature;
+  doc["humidity"] = humidity;
+  serializeJson(doc, json_string);
+  client.publish("weather", json_string);
 }
 
 int getEpochTime() {
