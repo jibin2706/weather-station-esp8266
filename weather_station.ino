@@ -30,6 +30,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT,
                          OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
 DHT dht(DHTPIN, DHTTYPE);
 
+unsigned long previousPublishTime = 0;
+long MQTT_PUBLISH_INTERVAL = 5 * 60 * 1000; // 5mins
 
 void setup() {
   Serial.begin(115200);
@@ -61,34 +63,40 @@ void connectWiFi() {
     delay(3000);
   }
   Serial.println(WiFi.localIP());
-  connectToMQTTServer();
 }
 
 void connectToMQTTServer() {
   client.setServer(MQTT_BROKER, MQTT_PORT);
-  int maxRetries = 3;
-  int count = 0;
   while (!client.connected()) {
     Serial.println("connecting to mqtt server");
-    if (client.connect("nodemcu-jibin")) {
-      Serial.println("connection to mqtt server is successful");
-    } else {
+    if (!client.connect("nodemcu-jibin")) {
       Serial.print("connection failed due to");
       Serial.println(client.state());
-      delay(2000);
+      delay(10000);
     }
-    count++;
-    if (count >= maxRetries) break;
   }
 }
 
 void publishWeatherToMqtt(float temperature, float humidity) {
-  StaticJsonDocument<200> doc;
-  char json_string[256];
-  doc["temperature"] = temperature;
-  doc["humidity"] = humidity;
-  serializeJson(doc, json_string);
-  client.publish("weather", json_string);
+  // send mqtt request every ~MQTT_PUBLISH_INTERVAL
+  unsigned long currentTime = millis();
+  Serial.println(currentTime);
+  Serial.println(previousPublishTime);
+  Serial.println();
+  Serial.println();
+  if (currentTime - previousPublishTime >= MQTT_PUBLISH_INTERVAL) {
+    connectToMQTTServer();
+    previousPublishTime = currentTime;
+    StaticJsonDocument<200> doc;
+    char json_string[256];
+    doc["temperature"] = temperature;
+    doc["humidity"] = humidity;
+    serializeJson(doc, json_string);
+    Serial.println(json_string);
+    Serial.println(client.state());
+    boolean status = client.publish("weather", json_string);
+    Serial.println(status);
+  }
 }
 
 int getEpochTime() {

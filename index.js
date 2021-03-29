@@ -1,7 +1,7 @@
 import mqtt from 'mqtt'
 import sqlite3pkg from 'sqlite3'
 
-const client = mqtt.connect('mqtt://broker.emqx.io')
+const client = mqtt.connect('mqtt://192.168.0.2')
 const sqlite3 = sqlite3pkg.verbose()
 const database = new sqlite3.Database('./data.db')
 

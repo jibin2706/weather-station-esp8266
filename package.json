@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "author": "Jibin Thomas <jibin.thomas2706@gmail.com>",
   "repository": "git@github.com:jibin2706/weather-station.git",
   "license": "MIT",
   "scripts": {},
